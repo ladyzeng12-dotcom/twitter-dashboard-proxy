@@ -1,70 +1,69 @@
 export default async function handler(req, res) {
-  // CORS 头设置
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // 处理 OPTIONS 预检请求
+  // Handle OPTIONS preflight
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // 只允许 GET 请求
+  // Only allow GET
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // 从环境变量读取 Twitter Bearer Token
-    const TWITTER_BEARER_TOKEN = process.env.TWITTER_BEARER_TOKEN;
+    const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY;
     
-    if (!TWITTER_BEARER_TOKEN) {
-      return res.status(500).json({ error: 'Twitter token not configured' });
+    if (!COMPOSIO_API_KEY) {
+      return res.status(500).json({ error: 'Composio API key not configured' });
     }
 
-    // 获取用户 ID (ladyzeng12 的 Twitter ID)
-    const userId = '1879077516028063744';
+    // Correct Twitter connectedAccountId for ladyzeng12
+    const connectedAccountId = 'ca_i8XYd0jQcHe7';
     
-    // 调用 Twitter API v2 获取用户信息
-    const userResponse = await fetch(
-      `https://api.twitter.com/2/users/${userId}?user.fields=public_metrics`,
+    // Call Composio to get Twitter user info
+    const response = await fetch(
+      'https://backend.composio.dev/api/v2/actions/TWITTER_GET_PROFILE/execute',
       {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${TWITTER_BEARER_TOKEN}`,
+          'Content-Type': 'application/json',
+          'X-API-Key': COMPOSIO_API_KEY,
         },
+        body: JSON.stringify({
+          connectedAccountId,
+          input: {}
+        }),
       }
     );
 
-    if (!userResponse.ok) {
-      const errorText = await userResponse.text();
-      console.error('Twitter API Error:', errorText);
-      return res.status(userResponse.status).json({ 
-        error: 'Twitter API request failed',
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Composio API Error:', errorText);
+      return res.status(response.status).json({ 
+        error: 'Composio API request failed',
         details: errorText 
       });
     }
 
-    const userData = await userResponse.json();
-
-    // 获取最近推文
-    const tweetsResponse = await fetch(
-      `https://api.twitter.com/2/users/${userId}/tweets?max_results=10&tweet.fields=public_metrics,created_at`,
-      {
-        headers: {
-          'Authorization': `Bearer ${TWITTER_BEARER_TOKEN}`,
-        },
-      }
-    );
-
-    let tweetsData = { data: [] };
-    if (tweetsResponse.ok) {
-      tweetsData = await tweetsResponse.json();
+    const data = await response.json();
+    
+    if (!data.data) {
+      return res.status(500).json({ error: 'No data returned from Composio' });
     }
 
-    // 返回组合数据
+    const profile = data.data;
+
+    // Return formatted data
     return res.status(200).json({
-      user: userData.data,
-      tweets: tweetsData.data || [],
+      followers: profile.public_metrics?.followers_count || 0,
+      tweets: profile.public_metrics?.tweet_count || 0,
+      following: profile.public_metrics?.following_count || 0,
+      likes: profile.public_metrics?.like_count || 0,
+      username: profile.username || 'ladyzeng12',
       timestamp: new Date().toISOString()
     });
 
