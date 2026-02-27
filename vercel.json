@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "name": "twitter-dashboard-proxy",
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
+  "env": {
+    "TWITTER_BEARER_TOKEN": "@twitter-bearer-token"
+  }
+}
