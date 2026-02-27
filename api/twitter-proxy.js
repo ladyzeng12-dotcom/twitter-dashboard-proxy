@@ -21,12 +21,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Composio API key not configured' });
     }
 
-    // Correct Twitter connectedAccountId for ladyzeng12
-    const connectedAccountId = 'ca_i8XYd0jQcHe7';
-    
-    // Call Composio to get Twitter user info
+    // Use Composio backend API with automatic connection handling
     const response = await fetch(
-      'https://backend.composio.dev/api/v2/actions/TWITTER_GET_PROFILE/execute',
+      'https://backend.composio.dev/api/v1/actions/TWITTER_USER_LOOKUP_ME/execute',
       {
         method: 'POST',
         headers: {
@@ -34,8 +31,9 @@ export default async function handler(req, res) {
           'X-API-Key': COMPOSIO_API_KEY,
         },
         body: JSON.stringify({
-          connectedAccountId,
-          input: {}
+          input: {
+            user_fields: ['public_metrics', 'created_at', 'description', 'profile_image_url']
+          }
         }),
       }
     );
@@ -51,18 +49,22 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     
-    if (!data.data) {
-      return res.status(500).json({ error: 'No data returned from Composio' });
+    if (!data.data || !data.data.data) {
+      return res.status(500).json({ 
+        error: 'Invalid response format',
+        details: 'No data returned from Composio' 
+      });
     }
 
-    const profile = data.data;
+    const profile = data.data.data;
+    const metrics = profile.public_metrics || {};
 
     // Return formatted data
     return res.status(200).json({
-      followers: profile.public_metrics?.followers_count || 0,
-      tweets: profile.public_metrics?.tweet_count || 0,
-      following: profile.public_metrics?.following_count || 0,
-      likes: profile.public_metrics?.like_count || 0,
+      followers: metrics.followers_count || 0,
+      tweets: metrics.tweet_count || 0,
+      following: metrics.following_count || 0,
+      likes: metrics.like_count || 0,
       username: profile.username || 'ladyzeng12',
       timestamp: new Date().toISOString()
     });
