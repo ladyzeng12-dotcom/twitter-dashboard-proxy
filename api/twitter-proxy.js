@@ -1,11 +1,13 @@
 const XQUIK_API_BASE_URL = process.env.XQUIK_API_BASE_URL || 'https://xquik.com';
 
 function formatProfile(profile, defaults = {}) {
+  const metrics = profile.public_metrics || {};
+
   return {
-    followers: profile.followers || profile.followers_count || 0,
-    tweets: profile.statuses_count || profile.tweet_count || 0,
-    following: profile.following || profile.following_count || 0,
-    likes: profile.favourites_count || profile.like_count || 0,
+    followers: profile.followers || profile.followers_count || metrics.followers_count || 0,
+    tweets: profile.statuses_count || profile.tweet_count || metrics.tweet_count || 0,
+    following: profile.following || profile.following_count || metrics.following_count || 0,
+    likes: profile.favourites_count || profile.like_count || metrics.like_count || 0,
     username: profile.username || defaults.username || 'ladyzeng12',
     timestamp: new Date().toISOString()
   };
@@ -113,7 +115,6 @@ export default async function handler(req, res) {
     }
 
     const profile = data.data.data;
-    const metrics = profile.public_metrics || {};
 
     // Return formatted data
     return res.status(200).json(formatProfile(profile));
