@@ -1,3 +1,48 @@
+const XQUIK_API_BASE_URL = process.env.XQUIK_API_BASE_URL || 'https://xquik.com';
+
+function formatProfile(profile, defaults = {}) {
+  const metrics = profile.public_metrics || {};
+
+  return {
+    followers: profile.followers || profile.followers_count || metrics.followers_count || 0,
+    tweets: profile.statuses_count || profile.tweet_count || metrics.tweet_count || 0,
+    following: profile.following || profile.following_count || metrics.following_count || 0,
+    likes: profile.favourites_count || profile.like_count || metrics.like_count || 0,
+    username: profile.username || defaults.username || 'ladyzeng12',
+    timestamp: new Date().toISOString()
+  };
+}
+
+async function fetchXquikProfile() {
+  const apiKey = process.env.XQUIK_API_KEY;
+  const username = process.env.XQUIK_USERNAME || 'ladyzeng12';
+
+  if (!apiKey) return null;
+
+  const response = await fetch(
+    `${XQUIK_API_BASE_URL}/api/v1/x/users/${encodeURIComponent(username)}`,
+    {
+      headers: {
+        'X-API-Key': apiKey
+      }
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    return {
+      error: {
+        details: errorText,
+        error: 'Xquik API request failed',
+        status: response.status
+      }
+    };
+  }
+
+  const profile = await response.json();
+  return { data: formatProfile(profile, { username }) };
+}
+
 export default async function handler(req, res) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,6 +60,19 @@ export default async function handler(req, res) {
   }
 
   try {
+    const xquikProfile = await fetchXquikProfile();
+
+    if (xquikProfile?.error) {
+      return res.status(xquikProfile.error.status).json({
+        error: xquikProfile.error.error,
+        details: xquikProfile.error.details
+      });
+    }
+
+    if (xquikProfile?.data) {
+      return res.status(200).json(xquikProfile.data);
+    }
+
     const COMPOSIO_API_KEY = process.env.COMPOSIO_API_KEY;
     
     if (!COMPOSIO_API_KEY) {
@@ -57,17 +115,9 @@ export default async function handler(req, res) {
     }
 
     const profile = data.data.data;
-    const metrics = profile.public_metrics || {};
 
     // Return formatted data
-    return res.status(200).json({
-      followers: metrics.followers_count || 0,
-      tweets: metrics.tweet_count || 0,
-      following: metrics.following_count || 0,
-      likes: metrics.like_count || 0,
-      username: profile.username || 'ladyzeng12',
-      timestamp: new Date().toISOString()
-    });
+    return res.status(200).json(formatProfile(profile));
 
   } catch (error) {
     console.error('Proxy Error:', error);

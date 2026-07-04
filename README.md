@@ -12,9 +12,35 @@ Vercel Serverless Function proxy for Twitter API.
 
 1. Import this repository in Vercel Dashboard
 2. Add environment variable:
-   - Key: `TWITTER_BEARER_TOKEN`
-   - Value: Your Twitter Bearer Token
+   - Key: `XQUIK_API_KEY`
+   - Value: Your Xquik API key
+   - Key: `XQUIK_USERNAME`
+   - Value: Dashboard username without `@`
 3. Deploy
+
+The proxy still supports the existing backend provider when `XQUIK_API_KEY` is
+not configured.
+
+### Xquik Profile Source
+
+When `XQUIK_API_KEY` is set, the function reads:
+
+```text
+GET https://xquik.com/api/v1/x/users/{username}
+```
+
+It returns the same dashboard response shape:
+
+```json
+{
+  "followers": 1234,
+  "tweets": 456,
+  "following": 89,
+  "likes": 0,
+  "username": "ladyzeng12",
+  "timestamp": "2026-01-01T00:00:00.000Z"
+}
+```
 
 ### Get Twitter Bearer Token
 
